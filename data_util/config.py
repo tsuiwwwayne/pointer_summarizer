@@ -3,10 +3,10 @@ import os
 root_dir = os.path.expanduser("~")
 
 #train_data_path = os.path.join(root_dir, "ptr_nw/cnn-dailymail-master/finished_files/train.bin")
-train_data_path = os.path.join(root_dir, "wikihow-data/finished_files/chunked/train_*")
-eval_data_path = os.path.join(root_dir, "wikihow-data/finished_files/val.bin")
-decode_data_path = os.path.join(root_dir, "wikihow-data/finished_files/test.bin")
-vocab_path = os.path.join(root_dir, "wikihow-data/finished_files/vocab")
+train_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/chunked/train_*")
+eval_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/val.bin")
+decode_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/test.bin")
+vocab_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/vocab")
 log_root = os.path.join(root_dir, "wikihow-data/log")
 
 # Hyperparameters

@@ -65,6 +65,33 @@ class Encoder(nn.Module):
 
         return encoder_outputs, encoder_feature, hidden
 
+#Second Encoder for the fact descriptions.
+class EncoderFD(nn.Module):
+    def __init__(self):
+        super(EncoderFD, self).__init__()
+        self.embedding = nn.Embedding(config.vocab_size, config.emb_dim)
+        init_wt_normal(self.embedding.weight)
+
+        self.lstm = nn.LSTM(config.emb_dim, config.hidden_dim, num_layers=1, batch_first=True, bidirectional=True)
+        init_lstm_wt(self.lstm)
+
+        self.W_h = nn.Linear(config.hidden_dim * 2, config.hidden_dim * 2, bias=False)
+
+    #seq_lens should be in descending order
+    def forward(self, input, seq_lens):
+        embedded = self.embedding(input)
+
+        packed = pack_padded_sequence(embedded, seq_lens, batch_first=True)
+        output, hidden = self.lstm(packed)
+
+        encoder_outputs, _ = pad_packed_sequence(output, batch_first=True)  # h dim = B x t_k x n
+        encoder_outputs = encoder_outputs.contiguous()
+
+        encoder_feature = encoder_outputs.view(-1, 2*config.hidden_dim)  # B * t_k x 2*hidden_dim
+        encoder_feature = self.W_h(encoder_feature)
+
+        return encoder_outputs, encoder_feature, hidden
+
 class ReduceState(nn.Module):
     def __init__(self):
         super(ReduceState, self).__init__()
@@ -92,7 +119,11 @@ class Attention(nn.Module):
         self.decode_proj = nn.Linear(config.hidden_dim * 2, config.hidden_dim * 2)
         self.v = nn.Linear(config.hidden_dim * 2, 1, bias=False)
 
-    def forward(self, s_t_hat, encoder_outputs, encoder_feature, enc_padding_mask, coverage):
+        #MLP for merging context vectors of the two encoders' distributions. Two layers with ReLU activation function in between.
+        self.mlp1 = nn.Bilinear(config.hidden_dim * 2, config.hidden_dim * 2, config.hidden_dim * 3, bias=False)
+        self.mlp2 = nn.Linear(config.hidden_dim * 3, config.hidden_dim * 2, bias=False)
+
+    def forward(self, s_t_hat, encoder_outputs, encoder_feature, encoder2_outputs, encoder2_feature, enc_padding_mask, coverage):
         b, t_k, n = list(encoder_outputs.size())
 
         dec_fea = self.decode_proj(s_t_hat) # B x 2*hidden_dim
@@ -114,8 +145,25 @@ class Attention(nn.Module):
         attn_dist = attn_dist_ / normalization_factor
 
         attn_dist = attn_dist.unsqueeze(1)  # B x 1 x t_k
-        c_t = torch.bmm(attn_dist, encoder_outputs)  # B x 1 x n
-        c_t = c_t.view(-1, config.hidden_dim * 2)  # B x 2*hidden_dim
+        c_t_1 = torch.bmm(attn_dist, encoder_outputs)  # B x 1 x n
+        c_t_1 = c_t_1.view(-1, config.hidden_dim * 2)  # B x 2*hidden_dim
+
+
+        #Process output from encoder2 which is the FD encoder.
+        e = torch.tanh(encoder2_feature) # B * t_k x 2*hidden_dim
+        scores = self.v(e)  # B * t_k x 1
+        scores = scores.view(-1, t_k)  # B x t_k
+
+        attn_dist_ = F.softmax(scores, dim=1)*enc_padding_mask # B x t_k
+        normalization_factor = attn_dist_.sum(1, keepdim=True)
+        attn_dist_2 = attn_dist_ / normalization_factor
+
+        attn_dist_2 = attn_dist_2.unsqueeze(1)  # B x 1 x t_k
+        c_t_2 = torch.bmm(attn_dist, encoder2_outputs)  # B x 1 x n
+        c_t_2 = c_t_2.view(-1, config.hidden_dim * 2)  # B x 2*hidden_dim
+
+        #Use MLP to form new context vector using c_t from encoder one and c_t from encoderFD.
+        c_t = F.softmax(self.mlp2(F.softmax(self.mlp1(c_t_1,c_t_2),dim=1)),dim=1)
 
         attn_dist = attn_dist.view(-1, t_k)  # B x t_k
 
@@ -123,6 +171,7 @@ class Attention(nn.Module):
             coverage = coverage.view(-1, t_k)
             coverage = coverage + attn_dist
 
+        #Returns c_t from mlp and attn_dist from text encoder only.
         return c_t, attn_dist, coverage
 
 class Decoder(nn.Module):
@@ -146,14 +195,14 @@ class Decoder(nn.Module):
         self.out2 = nn.Linear(config.hidden_dim, config.vocab_size)
         init_linear_wt(self.out2)
 
-    def forward(self, y_t_1, s_t_1, encoder_outputs, encoder_feature, enc_padding_mask,
+    def forward(self, y_t_1, s_t_1, encoder_outputs, encoder_feature, encoder_fd_outputs, encoder_fd_feature, enc_padding_mask,
                 c_t_1, extra_zeros, enc_batch_extend_vocab, coverage, step):
 
         if not self.training and step == 0:
             h_decoder, c_decoder = s_t_1
             s_t_hat = torch.cat((h_decoder.view(-1, config.hidden_dim),
                                  c_decoder.view(-1, config.hidden_dim)), 1)  # B x 2*hidden_dim
-            c_t, _, coverage_next = self.attention_network(s_t_hat, encoder_outputs, encoder_feature,
+            c_t, _, coverage_next = self.attention_network(s_t_hat, encoder_outputs, encoder_feature, encoder_fd_outputs, encoder_fd_feature,
                                                               enc_padding_mask, coverage)
             coverage = coverage_next
 
@@ -164,7 +213,7 @@ class Decoder(nn.Module):
         h_decoder, c_decoder = s_t
         s_t_hat = torch.cat((h_decoder.view(-1, config.hidden_dim),
                              c_decoder.view(-1, config.hidden_dim)), 1)  # B x 2*hidden_dim
-        c_t, attn_dist, coverage_next = self.attention_network(s_t_hat, encoder_outputs, encoder_feature,
+        c_t, attn_dist, coverage_next = self.attention_network(s_t_hat, encoder_outputs, encoder_feature, encoder_fd_outputs, encoder_fd_feature,
                                                           enc_padding_mask, coverage)
 
         if self.training or step > 0:
@@ -200,6 +249,7 @@ class Decoder(nn.Module):
 class Model(object):
     def __init__(self, model_file_path=None, is_eval=False):
         encoder = Encoder()
+        encoder_fd = EncoderFD()
         decoder = Decoder()
         reduce_state = ReduceState()
 
@@ -216,6 +266,7 @@ class Model(object):
             reduce_state = reduce_state.cuda()
 
         self.encoder = encoder
+        self.encoder_fd = encoder_fd
         self.decoder = decoder
         self.reduce_state = reduce_state
 

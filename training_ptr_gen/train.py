@@ -15,7 +15,7 @@ from data_util import config
 from data_util.batcher import Batcher
 from data_util.data import Vocab
 from data_util.utils import calc_running_avg_loss
-from train_util import get_input_from_batch, get_output_from_batch
+from train_util import *
 
 use_cuda = config.use_gpu and torch.cuda.is_available()
 
@@ -40,6 +40,7 @@ class Train(object):
         state = {
             'iter': iter,
             'encoder_state_dict': self.model.encoder.state_dict(),
+            'encoder_fd_state_dict': self.model.encoder_fd.state_dict(),
             'decoder_state_dict': self.model.decoder.state_dict(),
             'reduce_state_dict': self.model.reduce_state.state_dict(),
             'optimizer': self.optimizer.state_dict(),
@@ -51,7 +52,9 @@ class Train(object):
     def setup_train(self, model_file_path=None):
         self.model = Model(model_file_path)
 
-        params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
+        params = list(self.model.encoder.parameters()) + \
+                 list(self.model.encoder_fd.parameters()) + \
+                 list(self.model.decoder.parameters()) + \
                  list(self.model.reduce_state.parameters())
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
         self.optimizer = Adagrad(params, lr=initial_lr, initial_accumulator_value=config.adagrad_init_acc)
@@ -82,13 +85,15 @@ class Train(object):
         self.optimizer.zero_grad()
 
         encoder_outputs, encoder_feature, encoder_hidden = self.model.encoder(enc_batch, enc_lens)
+        encoder_fd_outputs, encoder_fd_feature, encoder_fd_hidden = self.model.encoder_fd(enc_batch, enc_lens)
         s_t_1 = self.model.reduce_state(encoder_hidden)
+        s_t_2 = self.model.reduce_state(encoder_fd_hidden)
 
         step_losses = []
         for di in range(min(max_dec_len, config.max_dec_steps)):
             y_t_1 = dec_batch[:, di]  # Teacher forcing
             final_dist, s_t_1,  c_t_1, attn_dist, p_gen, next_coverage = self.model.decoder(y_t_1, s_t_1,
-                                                        encoder_outputs, encoder_feature, enc_padding_mask, c_t_1,
+                                                        encoder_outputs, encoder_feature, encoder_fd_outputs, encoder_fd_feature, enc_padding_mask, c_t_1,
                                                         extra_zeros, enc_batch_extend_vocab,
                                                                            coverage, di)
             target = target_batch[:, di]
@@ -98,7 +103,7 @@ class Train(object):
                 step_coverage_loss = torch.sum(torch.min(attn_dist, coverage), 1)
                 step_loss = step_loss + config.cov_loss_wt * step_coverage_loss
                 coverage = next_coverage
-                
+
             step_mask = dec_padding_mask[:, di]
             step_loss = step_loss * step_mask
             step_losses.append(step_loss)
@@ -140,11 +145,11 @@ class Train(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train script")
     parser.add_argument("-m",
-                        dest="model_file_path", 
+                        dest="model_file_path",
                         required=False,
                         default=None,
                         help="Model file for retraining (default: None).")
     args = parser.parse_args()
-    
+
     train_processor = Train()
     train_processor.trainIters(config.max_iterations, args.model_file_path)

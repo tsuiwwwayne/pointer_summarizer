@@ -14,9 +14,9 @@ hidden_dim= 256
 emb_dim= 128
 batch_size= 8
 max_enc_steps=400
-max_dec_steps=300
-beam_size=4
-min_dec_steps=35
+max_dec_steps=100
+beam_size=8
+min_dec_steps=3
 vocab_size=50000
 
 lr=0.15

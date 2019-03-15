@@ -77,7 +77,7 @@ def tokenize_paragraphs(paragraphs_dir, tokenized_paragraphs_dir):
     with open("mapping.txt", "w") as f:
         for paragraph in paragraphs:
             f.write("%s \t %s\n" % (os.path.join(paragraphs_dir, paragraph), os.path.join(tokenized_paragraphs_dir, paragraph)))
-    command = ['java', 'edu.stanford.nlp.process.PTBTokenizer', '-ioFileList', '-preserveLines', 'mapping.txt']
+    command = ['java', '-classpath', '/root/stanford-corenlp-full-2018-10-05/*', 'edu.stanford.nlp.process.PTBTokenizer', '-ioFileList', '-preserveLines', 'mapping.txt']
     print("Tokenizing %i files in %s and saving in %s..." % (len(paragraphs), paragraphs_dir, tokenized_paragraphs_dir))
     subprocess.call(command)
     print("Stanford CoreNLP Tokenizer has finished.")

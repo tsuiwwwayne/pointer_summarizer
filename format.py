@@ -64,7 +64,7 @@ def chunk_all():
         os.mkdir(chunks_dir)
     # Chunk the data
     print("Splitting %s data into chunks..." % 'test')
-    chunk_file(set_name)
+    chunk_file('test')
     print("Saved chunked data in %s" % chunks_dir)
 
 

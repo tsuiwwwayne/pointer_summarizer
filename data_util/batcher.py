@@ -17,7 +17,7 @@ random.seed(1234)
 
 class Example(object):
 
-  def __init__(self, article, abstract_sentences, vocab):
+  def __init__(self, article, abstract_sentences, fact_descriptions, vocab):
     # Get ids of special tokens
     start_decoding = vocab.word2id(data.START_DECODING)
     stop_decoding = vocab.word2id(data.STOP_DECODING)
@@ -28,6 +28,13 @@ class Example(object):
       article_words = article_words[:config.max_enc_steps]
     self.enc_len = len(article_words) # store the length after truncation but before padding
     self.enc_input = [vocab.word2id(w) for w in article_words] # list of word ids; OOVs are represented by the id for UNK token
+
+    # Process the fact descriptions
+    fact_descriptions_words = fact_descriptions.split()
+    # if len(article_words) > config.max_enc_steps:
+    #   article_words = article_words[:config.max_enc_steps]
+    self.enc_fd_len = len(fact_descriptions_words) # store the length after truncation but before padding
+    self.enc_fd_input = [vocab.word2id(w) for w in fact_descriptions_words] # list of word ids; OOVs are represented by the id for UNK token
 
     # Process the abstract
     abstract = ' '.join(abstract_sentences) # string
@@ -51,6 +58,7 @@ class Example(object):
 
     # Store the original strings
     self.original_article = article
+    self.original_fd = fact_descriptions
     self.original_abstract = abstract
     self.original_abstract_sents = abstract_sentences
 
@@ -111,6 +119,19 @@ class Batch(object):
       self.enc_lens[i] = ex.enc_len
       for j in xrange(ex.enc_len):
         self.enc_padding_mask[i][j] = 1
+
+    # Initialize the numpy arrays for fact description.
+    # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
+    self.enc_fd_batch = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.int32)
+    self.enc_fd_lens = np.zeros((self.batch_size), dtype=np.int32)
+    self.enc_fd_padding_mask = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.float32)
+
+    # Fill in the numpy arrays
+    for i, ex in enumerate(example_list):
+      self.enc_fd_batch[i, :] = ex.enc_fd_batch[:]
+      self.enc_fd_lens[i] = ex.enc_fd_lens
+      for j in xrange(ex.enc_fd_lens):
+        self.enc_fd_padding_mask[i][j] = 1
 
     # For pointer-generator mode, need to store some extra info
     if config.pointer_gen:
@@ -271,6 +292,7 @@ class Batcher(object):
       e = example_generator.next() # e is a tf.Example
       try:
         article_text = e.features.feature['article'].bytes_list.value[0] # the article text was saved under the key 'article' in the data files
+        fact_text = e.features.feature['fact_descriptions'].bytes_list.value[0] # the article text was saved under the key 'fact_descriptions' in the data files
         abstract_text = e.features.feature['abstract'].bytes_list.value[0] # the abstract text was saved under the key 'abstract' in the data files
       except ValueError:
         tf.logging.error('Failed to get article or abstract from example')
@@ -279,4 +301,4 @@ class Batcher(object):
         #tf.logging.warning('Found an example with empty article text. Skipping it.')
         continue
       else:
-        yield (article_text, abstract_text)
+        yield (article_text, fact_text abstract_text)

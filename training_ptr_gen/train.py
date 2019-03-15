@@ -77,7 +77,7 @@ class Train(object):
         return start_iter, start_loss
 
     def train_one_batch(self, batch):
-        enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, extra_zeros, c_t_1, coverage = \
+        enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, enc_fd_batch, enc_fd_padding_mask, enc_fd_lens, extra_zeros, c_t_1, coverage = \
             get_input_from_batch(batch, use_cuda)
         dec_batch, dec_padding_mask, max_dec_len, dec_lens_var, target_batch = \
             get_output_from_batch(batch, use_cuda)
@@ -85,7 +85,7 @@ class Train(object):
         self.optimizer.zero_grad()
 
         encoder_outputs, encoder_feature, encoder_hidden = self.model.encoder(enc_batch, enc_lens)
-        encoder_fd_outputs, encoder_fd_feature, encoder_fd_hidden = self.model.encoder_fd(enc_batch, enc_lens)
+        encoder_fd_outputs, encoder_fd_feature, encoder_fd_hidden = self.model.encoder_fd(enc_fd_batch, enc_fd_lens)
         s_t_1 = self.model.reduce_state(encoder_hidden)
         s_t_2 = self.model.reduce_state(encoder_fd_hidden)
 

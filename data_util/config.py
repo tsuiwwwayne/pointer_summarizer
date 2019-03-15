@@ -1,6 +1,6 @@
 import os
 
-root_dir = os.path.expanduser("..")
+root_dir = os.path.expanduser("~")
 
 #train_data_path = os.path.join(root_dir, "ptr_nw/cnn-dailymail-master/finished_files/train.bin")
 train_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs_fd/chunked/train_*")

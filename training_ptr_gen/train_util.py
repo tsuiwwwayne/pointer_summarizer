@@ -12,6 +12,10 @@ def get_input_from_batch(batch, use_cuda):
   extra_zeros = None
   enc_batch_extend_vocab = None
 
+  enc_fd_batch = Variable(torch.from_numpy(batch.enc_fd_batch).long())
+  enc_fd_padding_mask = Variable(torch.from_numpy(batch.enc_fd_padding_mask)).float()
+  enc_fd_lens = batch.enc_fd_lens
+
   if config.pointer_gen:
     enc_batch_extend_vocab = Variable(torch.from_numpy(batch.enc_batch_extend_vocab).long())
     # max_art_oovs is the max over all the article oov list in the batch
@@ -37,7 +41,7 @@ def get_input_from_batch(batch, use_cuda):
     if coverage is not None:
       coverage = coverage.cuda()
 
-  return enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, extra_zeros, c_t_1, coverage
+  return enc_batch, enc_padding_mask, enc_lens, enc_batch_extend_vocab, enc_fd_batch, enc_fd_padding_mask, enc_fd_lens, extra_zeros, c_t_1, coverage
 
 def get_output_from_batch(batch, use_cuda):
   dec_batch = Variable(torch.from_numpy(batch.dec_batch).long())
@@ -56,4 +60,3 @@ def get_output_from_batch(batch, use_cuda):
 
 
   return dec_batch, dec_padding_mask, max_dec_len, dec_lens_var, target_batch
-

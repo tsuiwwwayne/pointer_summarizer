@@ -1,4 +1,4 @@
 export PYTHONPATH=`pwd`
 MODEL=$1
-python format.py
-python training_ptr_gen/decode.py $MODEL
+python format.py &> /dev/null
+python training_ptr_gen/decode.py $MODEL &> /dev/null

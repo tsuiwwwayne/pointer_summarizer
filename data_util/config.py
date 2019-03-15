@@ -1,20 +1,20 @@
 import os
 
-root_dir = os.path.expanduser("~")
+root_dir = "/content"
 
 #train_data_path = os.path.join(root_dir, "ptr_nw/cnn-dailymail-master/finished_files/train.bin")
 train_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/chunked/train_*")
 eval_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/val.bin")
-decode_data_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/test.bin")
-vocab_path = os.path.join(root_dir, "wikihow-data/finished_files_paragraphs/vocab")
-log_root = os.path.join(root_dir, "wikihow-data/log")
+decode_data_path = os.path.join(root_dir, "pointer_summarizer/finished_files_paragraphs/test.bin")
+vocab_path = os.path.join(root_dir, "pointer_summarizer/vocab")
+log_root = os.path.join(root_dir, "log")
 
 # Hyperparameters
 hidden_dim= 256
 emb_dim= 128
 batch_size= 8
 max_enc_steps=400
-max_dec_steps=100
+max_dec_steps=300
 beam_size=4
 min_dec_steps=35
 vocab_size=50000
@@ -26,7 +26,7 @@ trunc_norm_init_std=1e-4
 max_grad_norm=2.0
 
 pointer_gen = True
-is_coverage = False
+is_coverage = True
 cov_loss_wt = 1.0
 
 eps = 1e-12

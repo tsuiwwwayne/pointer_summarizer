@@ -31,8 +31,8 @@ class Example(object):
 
     # Process the fact descriptions
     fact_descriptions_words = fact_descriptions.split()
-    # if len(article_words) > config.max_enc_steps:
-    #   article_words = article_words[:config.max_enc_steps]
+    if len(fact_descriptions_words) > config.max_enc_steps:
+        fact_descriptions_words = fact_descriptions_words[:config.max_enc_steps]
     self.enc_fd_len = len(fact_descriptions_words) # store the length after truncation but before padding
     self.enc_fd_input = [vocab.word2id(w) for w in fact_descriptions_words] # list of word ids; OOVs are represented by the id for UNK token
 
@@ -128,7 +128,7 @@ class Batch(object):
 
     # Fill in the numpy arrays
     for i, ex in enumerate(example_list):
-      self.enc_fd_batch[i, :] = ex.enc_fd_batch[:]
+      self.enc_fd_batch[i, :] = ex.enc_fd_input[:]
       self.enc_fd_lens[i] = ex.enc_fd_lens
       for j in xrange(ex.enc_fd_lens):
         self.enc_fd_padding_mask[i][j] = 1
@@ -238,7 +238,7 @@ class Batcher(object):
           raise Exception("single_pass mode is off but the example generator is out of data; error.")
 
       abstract_sentences = [sent.strip() for sent in data.abstract2sents(abstract)] # Use the <s> and </s> tags in abstract to get a list of sentences.
-      fact_descriptions_sents =  fact_descriptions.split(' ||| ')
+      fact_descriptions_sents =  [sent.strip() for sent in fact_descriptions.split(' ||| ')]
       example = Example(article, abstract_sentences, fact_descriptions_sents, self._vocab) # Process into an Example.
       self._example_queue.put(example) # place the Example in the example queue.
 

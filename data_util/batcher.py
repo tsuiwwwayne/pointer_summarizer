@@ -134,8 +134,8 @@ class Batch(object):
     # Fill in the numpy arrays
     for i, ex in enumerate(example_list):
       self.enc_fd_batch[i, :] = ex.enc_fd_input[:]
-      self.enc_fd_lens[i] = ex.enc_fd_lens
-      for j in xrange(ex.enc_fd_lens):
+      self.enc_fd_lens[i] = ex.enc_fd_len
+      for j in xrange(ex.enc_fd_len):
         self.enc_fd_padding_mask[i][j] = 1
 
     # For pointer-generator mode, need to store some extra info

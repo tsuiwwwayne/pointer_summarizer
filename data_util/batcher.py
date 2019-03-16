@@ -102,10 +102,12 @@ class Batch(object):
   def init_encoder_seq(self, example_list):
     # Determine the maximum length of the encoder input sequence in this batch
     max_enc_seq_len = max([ex.enc_len for ex in example_list])
+    max_enc_fd_seq_len = max([ex.enc_fd_len for ex in example_list])
 
     # Pad the encoder input sequences up to the length of the longest sequence
     for ex in example_list:
       ex.pad_encoder_input(max_enc_seq_len, self.pad_id)
+      ex.pad_encoder_input(max_enc_fd_seq_len, self.pad_id)
 
     # Initialize the numpy arrays
     # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
@@ -122,9 +124,9 @@ class Batch(object):
 
     # Initialize the numpy arrays for fact description.
     # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
-    self.enc_fd_batch = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.int32)
+    self.enc_fd_batch = np.zeros((self.batch_size, max_enc_fd_seq_len), dtype=np.int32)
     self.enc_fd_lens = np.zeros((self.batch_size), dtype=np.int32)
-    self.enc_fd_padding_mask = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.float32)
+    self.enc_fd_padding_mask = np.zeros((self.batch_size, max_enc_fd_seq_len), dtype=np.float32)
 
     # Fill in the numpy arrays
     for i, ex in enumerate(example_list):

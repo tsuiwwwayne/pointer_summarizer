@@ -227,7 +227,7 @@ class Batcher(object):
 
     while True:
       try:
-        (article, abstract) = input_gen.next() # read the next example from file. article and abstract are both strings.
+        (article, fact_descriptions, abstract) = input_gen.next() # read the next example from file. article and abstract are both strings.
       except StopIteration: # if there are no more examples:
         tf.logging.info("The example generator for this example queue filling thread has exhausted data.")
         if self._single_pass:
@@ -238,7 +238,8 @@ class Batcher(object):
           raise Exception("single_pass mode is off but the example generator is out of data; error.")
 
       abstract_sentences = [sent.strip() for sent in data.abstract2sents(abstract)] # Use the <s> and </s> tags in abstract to get a list of sentences.
-      example = Example(article, abstract_sentences, self._vocab) # Process into an Example.
+      fact_descriptions_sents =  fact_descriptions.split(' ||| ')
+      example = Example(article, abstract_sentences, fact_descriptions_sents, self._vocab) # Process into an Example.
       self._example_queue.put(example) # place the Example in the example queue.
 
   def fill_batch_queue(self):
@@ -301,4 +302,4 @@ class Batcher(object):
         #tf.logging.warning('Found an example with empty article text. Skipping it.')
         continue
       else:
-        yield (article_text, fact_text abstract_text)
+        yield (article_text, fact_text,  abstract_text)

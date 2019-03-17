@@ -37,7 +37,6 @@ class Example(object):
         fact_descriptions_words = fact_descriptions_words[:config.max_enc_steps]
     self.enc_fd_len = len(fact_descriptions_words) # store the length after truncation but before padding
     self.enc_fd_input = [vocab.word2id(w) for w in fact_descriptions_words] # list of word ids; OOVs are represented by the id for UNK token
-    print self.enc_fd_input
 
     # Process the abstract
     abstract = ' '.join(abstract_sentences) # string

@@ -16,7 +16,7 @@ batch_size= 8
 max_enc_steps=400
 max_dec_steps=100
 beam_size=4
-min_dec_steps=35
+min_dec_steps=3
 vocab_size=50000
 
 lr=0.15
@@ -32,6 +32,6 @@ cov_loss_wt = 1.0
 eps = 1e-12
 max_iterations = 1000000
 
-use_gpu=False
+use_gpu=True
 
-lr_coverage=0.15
+lr_coverage=0.1
